@@ -39,6 +39,8 @@ new_function_name_file = os.path.join(cur_script_path, 'new_function_name.txt')
 with open(new_function_name_file, 'r') as f:
     for line in f.readlines():
         funcs.append(line[:-1]) # strip '\n'
+sprintf_before_call = '83ec0c8d44241883ec0450ff74241cff74241ce8'
+xprintf = dict()
 
 def get_known_libc_functionaddr(file_path):
 
@@ -65,16 +67,35 @@ def get_known_libc_functionaddr(file_path):
         if fn_name not in funcs:
             continue
         fn_bytes = fn_info['bytes']
-
+        print 'Searching for ' + fn_name
         searchresult = r2.cmd('/x %s' % fn_bytes)
         print searchresult
-        re_text = re.compile(ur"0x(.*?) hit")
+        re_text = re.compile(ur"0x(.*?) hit.*_.* (.*)")
         try:
             for item in re_text.finditer(searchresult):
-                startaddr = item.group(1)
+                start_bytes = item.groups(1)
+                startaddr   = start_bytes[0]
+                found_bytes = start_bytes[1]
                 startaddr_num = int(startaddr, 16)
-                if startaddr_num >= text_start and startaddr_num <= text_end:
-                    ret['0x%s' % startaddr] = fn_name 
+                # collect xprintf 
+                if fn_name in ['vsprintf', 'vasprintf', 'vfprintf', 'vsscanf']:
+                    xprintf[fn_name] = startaddr_num
+
+                # Fix sprintf
+                if fn_name == 'sprintf':
+                    le_bytes = found_bytes[len(sprintf_before_call):len(sprintf_before_call)+8]
+                    msg = ''
+                    msg += le_bytes[6:]
+                    msg += le_bytes[4:6]
+                    msg += le_bytes[2:4]
+                    msg += le_bytes[0:2]
+                    offset = int(msg, 16)
+                    if offset == abs(startaddr_num + len(sprintf_before_call)/2 + 4 - xprintf['vsprintf']):
+                        if startaddr_num >= text_start and startaddr_num <= text_end:
+                            ret['0x%s' % startaddr] = fn_name 
+                else:    
+                    if startaddr_num >= text_start and startaddr_num <= text_end:
+                        ret['0x%s' % startaddr] = fn_name 
         except Exception as e:
             print e
             pass
@@ -84,5 +105,6 @@ def get_known_libc_functionaddr(file_path):
     return ret
 
 if __name__ == "__main__":
-    known_libc_functions = get_known_libc_functionaddr('/home/epeius/DefCC/test_cbs_recompile/pwn02_cb')
+    #known_libc_functions = get_known_libc_functionaddr('/home/epeius/DefCC/test_cbs_recompile/pwn02_cb')
+    known_libc_functions = get_known_libc_functionaddr('/home/supermole/defcc/pwn02_recompile')
     print known_libc_functions
