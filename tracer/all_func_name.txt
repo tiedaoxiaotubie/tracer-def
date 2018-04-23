@@ -2,6 +2,7 @@ vsscanf
 vasprintf
 vfprintf
 vsprintf
+sprintf
 snprintf
 malloc
 tmpnam
@@ -11,6 +12,7 @@ __printf_chk
 strstr
 gethostbyname
 abort
+rand
 _dl_vdso_vsym
 __isoc99_sscanf
 fgets
@@ -95,3 +97,4 @@ ftell
 fopen
 fputs
 vsnprintf
+sprintf
